@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.4.10"
+    kotlin("multiplatform") version "2.4.10"
 }
 
 group = "org.example"
@@ -9,14 +9,9 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    testImplementation(kotlin("test"))
-}
-
 kotlin {
-    jvmToolchain(21)
-}
-
-tasks.test {
-    useJUnitPlatform()
+    js {
+        browser()
+        binaries.executable()
+    }
 }
