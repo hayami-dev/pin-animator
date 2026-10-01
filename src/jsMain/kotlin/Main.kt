@@ -7,10 +7,12 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 private const val CANVAS_HEIGHT = 500.0
-private const val BREATH_PERIOD_SEC = 2.5       // 1呼吸の周期(秒)
-private const val BREATH_AMPLITUDE = CANVAS_HEIGHT * 0.025  // 振幅：画像高さの2.5%
+private const val BREATH_PERIOD_SEC = 3       // 1呼吸の周期(秒)
+private const val BREATH_AMPLITUDE = CANVAS_HEIGHT * 0.01  // 振幅：画像高さの0.1%
 
 lateinit var ctx: CanvasRenderingContext2D
+
+data class Point(val x: Double, val y: Double)
 
 fun main() {
     val canvas = document.getElementById("canvas") as HTMLCanvasElement
@@ -18,7 +20,6 @@ fun main() {
 
     ctx.strokeStyle = "#000"
     ctx.fillStyle = "#fff"
-
 
     window.requestAnimationFrame { firstTimestamp -> animate(firstTimestamp) }
 }
@@ -30,24 +31,20 @@ fun animate(timestampMs: Double) {
     val timeSec = timestampMs / 1000.0
     val breathOffsetY = sin(2 * PI * timeSec / BREATH_PERIOD_SEC) * BREATH_AMPLITUDE
 
-    ctx.save()
-    ctx.translate(0.0, breathOffsetY) // 胴体のピンを基準に...というより、キャラ全体をY方向にだけずらす
-    // キャラクター部分の描画
-    drawCharacter(ctx)
-    ctx.restore()
+    drawCharacter(ctx, breathOffsetY) // キャラクター部分の描画
 
     window.requestAnimationFrame { next -> animate(next) }
 }
 
 private fun Double.toRad() = this * PI / 180.0
 
-fun drawCharacter(ctx: CanvasRenderingContext2D) {
+fun drawCharacter(ctx: CanvasRenderingContext2D, breathOffsetY: Double) {
 
     // 右腕(向かって左)
     drawRotatedRect(ctx, x = 183.0, y = 172.0, w = 17.0, h = 112.0, angleDeg = 25.0, pivotX = 191.5, pivotY = 228.0)
 
     // 胴体
-    drawRect(ctx, x = 207.0, y = 159.0, w = 100.0, h = 175.0)
+    drawBody(ctx, breathOffsetY)
 
     // 左腕(向かって右)
     drawRotatedRect(
@@ -89,7 +86,6 @@ fun drawEllipse(ctx: CanvasRenderingContext2D, cx: Double, cy: Double, rx: Doubl
     ctx.stroke()
 }
 
-
 fun drawRect(ctx: CanvasRenderingContext2D, x: Double, y: Double, w: Double, h: Double) {
     ctx.beginPath()
     ctx.rect(x, y, w, h)
@@ -113,4 +109,35 @@ fun drawRotatedRect(
     ctx.translate(-pivotX, -pivotY)
     drawRect(ctx, x, y, w, h)
     ctx.restore()
+}
+
+// 自由変形可能な胴体の描画に必要なメソッド郡
+// 三角形の描画方法の定義
+fun drawTriangle(ctx: CanvasRenderingContext2D, a: Point, b: Point, c: Point) {
+    val path = Path2D()
+    path.moveTo(a.x, a.y)
+    path.lineTo(b.x, b.y)
+    path.lineTo(c.x, c.y)
+    path.closePath()
+    ctx.fill(path)
+    ctx.stroke(path)
+}
+
+// 三角形2枚の描画方法の定義
+fun drawQuad(ctx: CanvasRenderingContext2D, topLeft: Point, topRight: Point, bottomRight: Point, bottomLeft: Point) {
+    // 対角線（左上→右下）で2枚に分割
+    drawTriangle(ctx, topLeft, topRight, bottomRight)
+    drawTriangle(ctx, topLeft, bottomRight, bottomLeft)
+}
+
+// 胴体の描画
+fun drawBody(ctx: CanvasRenderingContext2D, breathOffsetY: Double) {
+    val breathOffsetX = breathOffsetY * 0.3
+
+    val topLeft = Point(207.0 - breathOffsetX, 159.0 + breathOffsetY)
+    val topRight = Point(307.0 - breathOffsetX, 159.0 + breathOffsetY)      // 207 + 100(幅)
+    val bottomRight = Point(307.0, 334.0)   // 159 + 175(高さ)
+    val bottomLeft = Point(207.0, 334.0)
+
+    drawQuad(ctx, topLeft, topRight, bottomRight, bottomLeft)
 }
